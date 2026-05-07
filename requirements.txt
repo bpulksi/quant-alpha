@@ -10,3 +10,5 @@ nltk
 praw
 alpaca-py
 yfinance
+tensorflow
+Pillow
