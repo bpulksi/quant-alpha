@@ -1,0 +1,134 @@
+{
+  "signals": [
+    {
+      "title": "AI infrastructure overbuild -- railroad/internet bubble pattern",
+      "direction": -0.65,
+      "targets": [],
+      "categories": [
+        "AI_STOCKS",
+        "TECH_STOCKS"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 1.2,
+      "notes": "When infra spend exceeds 2-3% GDP there is almost always a crash. AI capex is at that threshold.",
+      "added_at": "2026-05-07T01:13:47.319821+00:00",
+      "expires": "2026-07-06T01:13:47.319821+00:00"
+    },
+    {
+      "title": "China AI dumping threat -- cheap open-weight models kneecap US AI valuations",
+      "direction": -0.7,
+      "targets": [
+        "NVDA",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "PLTR",
+        "AMD"
+      ],
+      "categories": [
+        "AI_STOCKS"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 1.0,
+      "notes": "If large corps adopt cheap Chinese models, site licenses worth billions evaporate. 40% S&P at risk.",
+      "added_at": "2026-05-07T01:13:47.321993+00:00",
+      "expires": "2026-07-06T01:13:47.321993+00:00"
+    },
+    {
+      "title": "US market 40-50% correction risk -- AI capex slowdown triggers recession",
+      "direction": -0.55,
+      "targets": [
+        "SPY",
+        "QQQ",
+        "IWM"
+      ],
+      "categories": [
+        "US_MARKET",
+        "INDEX",
+        "ETF"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 1.0,
+      "notes": "40% of S&P directly/tangentially tied to AI bet. Majority of GDP growth last 2 years from AI capex.",
+      "added_at": "2026-05-07T01:13:47.323996+00:00",
+      "expires": "2026-07-06T01:13:47.323996+00:00"
+    },
+    {
+      "title": "NVDA: highest AI infrastructure exposure -- most vulnerable to correction",
+      "direction": -0.75,
+      "targets": [
+        "NVDA",
+        "AMD"
+      ],
+      "categories": [],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 1.3,
+      "notes": "AI chip demand entirely dependent on capex bets that historically crash after infrastructure overbuilds.",
+      "added_at": "2026-05-07T01:13:47.324992+00:00",
+      "expires": "2026-07-06T01:13:47.324992+00:00"
+    },
+    {
+      "title": "QQQ: AI-heavy index -- most correlated to AI valuation crash",
+      "direction": -0.7,
+      "targets": [
+        "QQQ"
+      ],
+      "categories": [],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 1.1,
+      "notes": "Nasdaq concentration in AI names makes QQQ ground zero for any AI valuation correction.",
+      "added_at": "2026-05-07T01:13:47.326042+00:00",
+      "expires": "2026-07-06T01:13:47.326042+00:00"
+    },
+    {
+      "title": "Crypto risk-off: market crash would hit BTC and alts as investors deleverage",
+      "direction": -0.4,
+      "targets": [
+        "COIN",
+        "MSTR"
+      ],
+      "categories": [
+        "CRYPTO",
+        "CRYPTO_PROXY",
+        "ALTCOINS"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 0.8,
+      "notes": "Galloway: 40-50% market correction scenario. Crypto historically amplifies risk-off moves.",
+      "added_at": "2026-05-07T01:13:47.327032+00:00",
+      "expires": "2026-07-06T01:13:47.327032+00:00"
+    },
+    {
+      "title": "GLP-1 / healthcare more important than AI long term (Scott Galloway thesis)",
+      "direction": 0.5,
+      "targets": [],
+      "categories": [
+        "HEALTHCARE"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 0.7,
+      "notes": "Not in current portfolio but noted for future expansion.",
+      "added_at": "2026-05-07T01:13:47.328032+00:00",
+      "expires": "2026-07-06T01:13:47.328032+00:00"
+    },
+    {
+      "title": "AI model convergence -- all models heading to same place, pricing power = zero",
+      "direction": -0.6,
+      "targets": [
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "categories": [
+        "AI_STOCKS"
+      ],
+      "source": "Scott Galloway / DONOTPAY Podcast 2026-05-07",
+      "weight": 0.9,
+      "notes": "Models reverse-engineer each others features. Open-weight free models commoditise the space.",
+      "added_at": "2026-05-07T01:13:47.328993+00:00",
+      "expires": "2026-07-06T01:13:47.328993+00:00"
+    }
+  ],
+  "last_updated": "2026-05-07T01:13:47.328993+00:00"
+}

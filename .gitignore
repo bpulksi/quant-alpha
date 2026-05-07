@@ -1,4 +1,27 @@
+# Environment — contains API keys, NEVER commit
 .env
-*.log
-safety-check-log.json
+
+# Runtime state — regenerated automatically
+portfolio_state.json
+research_state.json
+macro_state.json
+perf_state.json
+ta_signal_cache.json
+multi-trade-log.json
+trades.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# ML models — large binaries, regenerate with: python quant_engine_v3.py train-all
+models_v3/*.pkl
+
+# Node
 node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
