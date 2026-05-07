@@ -27,14 +27,10 @@ CLI:
   python performance_analytics.py --watch   # rerun every 60s
 """
 
-import os, sys, json, math, time
+import os, sys, math, time
 from datetime import datetime, timezone
 from collections import defaultdict
-
-BOT_DIR    = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE   = os.path.join(BOT_DIR, "multi-trade-log.json")
-STATE_FILE = os.path.join(BOT_DIR, "portfolio_state.json")
-PERF_FILE  = os.path.join(BOT_DIR, "perf_state.json")
+from state_manager import load_json, save_json
 
 CHALLENGE_START   = "2026-05-07"
 STARTING_CAPITAL  = 100000.0   # 100k EUR paper trading fund
@@ -60,18 +56,13 @@ def load_closed_trades() -> list:
     Load closed trades from portfolio_state.json (preferred — has P&L).
     Falls back to inferring from multi-trade-log.json directly.
     """
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
-            state = json.load(f)
-        ct = state.get("closed_trades", [])
-        if ct:
-            return ct
+    state = load_json("portfolio_state.json", default={})
+    ct = state.get("closed_trades", [])
+    if ct:
+        return ct
 
     # Fallback: infer from log (BUY followed by SELL on same symbol)
-    if not os.path.exists(LOG_FILE):
-        return []
-    with open(LOG_FILE) as f:
-        log = json.load(f)
+    log = load_json("multi-trade-log.json", default={"trades": []})
 
     open_pos = {}
     closed   = []
@@ -110,10 +101,7 @@ def load_closed_trades() -> list:
 
 def load_daily_pnl() -> dict:
     """Load daily P&L dict from portfolio_state.json."""
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
-            return json.load(f).get("daily_pnl", {})
-    return {}
+    return load_json("portfolio_state.json", default={}).get("daily_pnl", {})
 
 # ── Core metrics ──────────────────────────────────────────────────────────
 
@@ -410,9 +398,7 @@ def print_full_report(m: dict, v: dict):
 # ── Write perf_state.json ─────────────────────────────────────────────────
 
 def write_perf_state(m: dict, v: dict):
-    state = {"metrics": m, "verdict": v}
-    with open(PERF_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    save_json("perf_state.json", {"metrics": m, "verdict": v})
     print(f"  [OK] perf_state.json written")
 
 # ── CLI ───────────────────────────────────────────────────────────────────

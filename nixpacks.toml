@@ -4,7 +4,7 @@ nixPkgs = ["python311", "python311Packages.pip"]
 [phases.install]
 cmds = [
   "npm ci",
-  "pip install --no-cache-dir requests python-dotenv pandas numpy scikit-learn ta vaderSentiment feedparser nltk praw",
+  "pip install --no-cache-dir requests python-dotenv pandas numpy scikit-learn ta vaderSentiment feedparser nltk praw alpaca-py yfinance",
   "python -c \"import nltk; nltk.download('vader_lexicon', quiet=True)\""
 ]
 

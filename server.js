@@ -8,15 +8,14 @@
  * Local:           node server.js  →  open http://localhost:3000
  */
 
-import express from "express";
-import { spawn } from "child_process";
-import { createRequire } from "module";
-import path from "path";
+import express    from "express";
+import basicAuth  from "express-basic-auth";
+import { spawn }  from "child_process";
+import path       from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
+import fs         from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require   = createRequire(import.meta.url);
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -24,11 +23,41 @@ const PORT         = parseInt(process.env.PORT || "3000");
 const BOT_INTERVAL = parseInt(process.env.BOT_INTERVAL_MIN || "15") * 60 * 1000;
 const BOT_SCRIPT   = path.join(__dirname, "multi_trader.js");
 
-// ─── Express — serve dashboard + state JSON files ────────────────────────────
+// DATA_DIR: Railway persistent volume path (set DATA_DIR=/data in Railway env vars)
+// Locally: falls back to bot directory — same behaviour as before
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+
+// ─── Express setup ────────────────────────────────────────────────────────────
 
 const app = express();
 
-// Serve all static files (dashboard.html, *.json state files) from bot dir
+// ── Basic auth (protects dashboard on cloud) ─────────────────────────────────
+// Set DASH_USER and DASH_PASS in Railway environment variables.
+// If not set: auth is disabled locally (safe for dev, required for cloud).
+const DASH_USER = process.env.DASH_USER;
+const DASH_PASS = process.env.DASH_PASS;
+if (DASH_USER && DASH_PASS) {
+  app.use(basicAuth({
+    users:     { [DASH_USER]: DASH_PASS },
+    challenge: true,
+    realm:     "Quant Alpha",
+  }));
+  console.log(`  🔒 Dashboard protected — user: ${DASH_USER}`);
+} else {
+  console.log("  ⚠️  No DASH_USER/DASH_PASS set — dashboard is open (fine locally, set on Railway)");
+}
+
+// ── Serve JSON state files from DATA_DIR (persistent volume on Railway) ───────
+// These are the live state files the dashboard reads (portfolio, research, etc.)
+app.use("/state", express.static(DATA_DIR, {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(".json")) {
+      res.setHeader("Cache-Control", "no-store");
+    }
+  },
+}));
+
+// ── Serve dashboard + static assets from bot dir ─────────────────────────────
 app.use(express.static(__dirname, {
   setHeaders(res, filePath) {
     // No-cache for JSON state files so dashboard always gets fresh data

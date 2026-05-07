@@ -7,12 +7,13 @@ Run: python portfolio_tracker.py report    → full P&L report
 Run: python portfolio_tracker.py learn     → update adaptive thresholds
 """
 
-import json, os, sys
+import os, sys
 from datetime import datetime, timedelta
 from collections import defaultdict
+from state_manager import load_json, save_json, state_path
 
-TRACKER_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portfolio_state.json")
-LOG_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "multi-trade-log.json")
+TRACKER_FILE = state_path("portfolio_state.json")
+LOG_FILE     = state_path("multi-trade-log.json")
 CHALLENGE_START = "2026-05-07"
 CHALLENGE_DAYS  = 90
 STARTING_CAPITAL = 100000.0   # EUR equivalent — 100k paper trading fund
@@ -20,30 +21,26 @@ STARTING_CAPITAL = 100000.0   # EUR equivalent — 100k paper trading fund
 # ─── State ────────────────────────────────────────────────────────────────
 
 def load_state():
-    if not os.path.exists(TRACKER_FILE):
-        return {
-            "start_date": CHALLENGE_START,
-            "starting_capital": STARTING_CAPITAL,
-            "virtual_capital": STARTING_CAPITAL,
-            "open_positions": {},   # symbol → {entry, qty, side, date}
-            "closed_trades": [],
-            "daily_pnl": {},
-            "adaptive": {
-                # Thresholds that improve as the bot learns
-                "min_confidence": 0.50,
-                "min_ml_prob": 0.55,
-                "regime_weights": {"TRENDING": 1.0, "RANGING": 0.8, "VOLATILE": 0.6},
-                "best_assets": [],   # ranked by win rate
-                "avoid_assets": [],  # consistently losing
-                "version": 1,
-            }
+    default = {
+        "start_date": CHALLENGE_START,
+        "starting_capital": STARTING_CAPITAL,
+        "virtual_capital": STARTING_CAPITAL,
+        "open_positions": {},
+        "closed_trades": [],
+        "daily_pnl": {},
+        "adaptive": {
+            "min_confidence": 0.50,
+            "min_ml_prob": 0.55,
+            "regime_weights": {"TRENDING": 1.0, "RANGING": 0.8, "VOLATILE": 0.6},
+            "best_assets": [],
+            "avoid_assets": [],
+            "version": 1,
         }
-    with open(TRACKER_FILE) as f:
-        return json.load(f)
+    }
+    return load_json("portfolio_state.json", default=default)
 
 def save_state(state):
-    with open(TRACKER_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    save_json("portfolio_state.json", state)
 
 # ─── Sync from trade log ──────────────────────────────────────────────────
 
@@ -52,8 +49,7 @@ def sync_from_log(state):
     if not os.path.exists(LOG_FILE):
         return state
 
-    with open(LOG_FILE) as f:
-        log = json.load(f)
+    log = load_json("multi-trade-log.json", default={"trades": []})
 
     already_processed = {t["log_ref"] for t in state["closed_trades"] if "log_ref" in t}
 

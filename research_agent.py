@@ -15,8 +15,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 load_dotenv()
 
-BOT_DIR  = os.path.dirname(os.path.abspath(__file__))
-STATE_FILE = os.path.join(BOT_DIR, "research_state.json")
+from state_manager import save_json
 
 CRYPTO_SYMBOLS = os.getenv(
     "SYMBOL",
@@ -177,8 +176,7 @@ def write_research_state(results: list, arb_results: list = None):
         "arbitrage_alerts": [r for r in (arb_results or results) if r.get("arbitrage_actionable")],
         "all_results":      results,
     }
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    save_json("research_state.json", state)
     print(f"\n  [OK] research_state.json written ({len(results)} assets)")
 
 # ─── Telegram alerts ─────────────────────────────────────────────────────────

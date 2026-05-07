@@ -18,11 +18,11 @@ CLI:
   python macro_intelligence.py expire        -- remove expired signals
 """
 
-import os, sys, json
+import os, sys
 from datetime import datetime, timezone, timedelta
+from state_manager import load_json, save_json, state_path
 
-BOT_DIR    = os.path.dirname(os.path.abspath(__file__))
-MACRO_FILE = os.path.join(BOT_DIR, "macro_signals.json")
+MACRO_FILE = state_path("macro_signals.json")
 
 # Default TTL for macro signals (they decay over time -- macro takes months to play out)
 DEFAULT_TTL_DAYS = 30
@@ -53,15 +53,12 @@ ALL_SYMBOLS = [
 # ── Load / Save ───────────────────────────────────────────────────────────
 
 def load_signals() -> dict:
-    if os.path.exists(MACRO_FILE):
-        with open(MACRO_FILE) as f:
-            return json.load(f)
-    return {"signals": [], "last_updated": datetime.now(timezone.utc).isoformat()}
+    return load_json("macro_signals.json",
+                     default={"signals": [], "last_updated": datetime.now(timezone.utc).isoformat()})
 
 def save_signals(data: dict):
     data["last_updated"] = datetime.now(timezone.utc).isoformat()
-    with open(MACRO_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    save_json("macro_signals.json", data)
 
 # ── Core scoring ──────────────────────────────────────────────────────────
 
@@ -275,8 +272,6 @@ def score_all(symbols: list = None) -> list:
 
 # ── Write macro_state.json for dashboard ──────────────────────────────────
 
-MACRO_STATE_FILE = os.path.join(BOT_DIR, "macro_state.json")
-
 def write_macro_state():
     data   = load_signals()
     scores = score_all()
@@ -286,8 +281,7 @@ def write_macro_state():
         "scores":        scores,
         "active_themes": _extract_themes(data),
     }
-    with open(MACRO_STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+    save_json("macro_state.json", state)
     print(f"  [OK] macro_state.json written ({len(scores)} symbols)")
 
 def _extract_themes(data: dict) -> list:
