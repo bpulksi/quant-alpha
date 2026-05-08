@@ -9,6 +9,7 @@
 
 import "dotenv/config";
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from "fs";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 import crypto from "crypto";
 
@@ -49,7 +50,7 @@ const ALPACA_CRYPTO_SUPPORTED = new Set([
 ]);
 
 // Alpaca-supported stock symbols (all standard US equities and ETFs are supported)
-const ALPACA_STOCK_SYMBOLS = new Set([
+export const ALPACA_STOCK_SYMBOLS = new Set([
   // Tech / AI
   "AAPL","MSFT","NVDA","GOOGL","META","AMZN","TSLA","AMD","PLTR","CRM","ORCL","SNOW",
   // Crypto proxies
@@ -73,7 +74,7 @@ const ALPACA_SUPPORTED = new Set([
 ]);
 
 /** Returns true if symbol is a plain stock ticker (no USDT suffix, exists in env stock list) */
-function isStock(symbol) {
+export function isStock(symbol) {
   const s = symbol.toUpperCase();
   // Match env list OR known Alpaca stock set — handles new .env additions automatically
   return ALPACA_STOCK_SYMBOLS.has(s) || STOCK_SYMBOLS.includes(s);
@@ -761,4 +762,6 @@ async function run() {
   console.log("═══════════════════════════════════════════════════════════\n");
 }
 
-run().catch(console.error);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  run().catch(console.error);
+}
