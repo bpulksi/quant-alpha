@@ -9,7 +9,7 @@
 
 import "dotenv/config";
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from "fs";
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import crypto from "crypto";
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -203,11 +203,12 @@ function writeTradeCsv(entry) {
 
 function getQuantSignal(symbol) {
   try {
-    const output = execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.quantEngine}" signal ${symbol}`,
+    const { stdout } = spawnSync(
+      CONFIG.pythonPath,
+      [CONFIG.quantEngine, "signal", symbol],
       { timeout: 60000, encoding: "utf8" }
     );
-    return JSON.parse(output);
+    return JSON.parse(stdout);
   } catch (e) {
     console.log(`  ⚠️  Quant engine error for ${symbol}: ${e.message.slice(0, 120)}`);
     return null;
@@ -223,14 +224,15 @@ function getResearchSignal(symbol, quant) {
       confidence:   quant.final_signal.confidence,
       action:       quant.final_signal.action,
       volume_ratio: quant.indicators.volume_ratio || 1.0,
-    }).replace(/"/g, '\\"');
+    });
     const researchPath = `${CONFIG.botDir || "."}/research_agent.py`;
-    const output = execSync(
-      `"${CONFIG.pythonPath}" "${researchPath}" signal ${symbol} --quant-data "${quantData}"`,
+    const { stdout } = spawnSync(
+      CONFIG.pythonPath,
+      [researchPath, "signal", symbol, "--quant-data", quantData],
       { timeout: 45000, encoding: "utf8" }
     );
     // Parse only last JSON line (stdout may contain info prints)
-    const lines = output.trim().split("\n");
+    const lines = stdout.trim().split("\n");
     const jsonLine = lines.reverse().find(l => l.trim().startsWith("{"));
     return jsonLine ? JSON.parse(jsonLine) : null;
   } catch (e) {
@@ -248,8 +250,9 @@ function getResearchSignal(symbol, quant) {
 function getStockSignal(symbol) {
   try {
     // Fetch live price from Alpaca market data
-    const priceOut = execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.botDir}/stock_price_fetcher.py" ${symbol}`,
+    const { stdout: priceOut } = spawnSync(
+      CONFIG.pythonPath,
+      [`${CONFIG.botDir}/stock_price_fetcher.py`, symbol],
       { timeout: 10000, encoding: "utf8" }
     );
     const priceData = JSON.parse(priceOut.trim().split("\n").pop());
@@ -261,8 +264,9 @@ function getStockSignal(symbol) {
     }
 
     // Run research agent to get TA + news score
-    const researchOut = execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.botDir}/research_agent.py" signal ${symbol}`,
+    const { stdout: researchOut } = spawnSync(
+      CONFIG.pythonPath,
+      [`${CONFIG.botDir}/research_agent.py`, "signal", symbol],
       { timeout: 90000, encoding: "utf8" }  // TA can take ~3 min for stocks
     );
     const lines = researchOut.trim().split("\n");
@@ -426,8 +430,9 @@ function sendTelegram(message) {
     // Write message to a temp file to avoid shell quoting issues
     const tmpFile = "telegram_msg_tmp.txt";
     writeFileSync(tmpFile, message, "utf8");
-    const out = execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.quantEngine.replace('quant_engine_v3.py','telegram_notify.py')}" send_file ${tmpFile}`,
+    const { stdout: out } = spawnSync(
+      CONFIG.pythonPath,
+      [CONFIG.quantEngine.replace('quant_engine_v3.py','telegram_notify.py'), "send_file", tmpFile],
       { timeout: 15000, encoding: "utf8" }
     );
     console.log(`  [Telegram] ${out.trim()}`);
@@ -466,8 +471,9 @@ async function run() {
   // ── Market hours check (for stock gating) ────────────────────────────────
   let marketOpen = false;
   try {
-    const clockOut = execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.botDir}/stock_price_fetcher.py" --is-market-open`,
+    const { stdout: clockOut } = spawnSync(
+      CONFIG.pythonPath,
+      [`${CONFIG.botDir}/stock_price_fetcher.py`, "--is-market-open"],
       { timeout: 8000, encoding: "utf8" }
     );
     const clock = JSON.parse(clockOut.trim().split("\n").pop());
@@ -746,8 +752,9 @@ async function run() {
 
   // ─── Sync portfolio tracker ────────────────────────────────────────────
   try {
-    execSync(
-      `"${CONFIG.pythonPath}" "${CONFIG.quantEngine.replace('quant_engine_v3.py','portfolio_tracker.py')}" report`,
+    spawnSync(
+      CONFIG.pythonPath,
+      [CONFIG.quantEngine.replace('quant_engine_v3.py','portfolio_tracker.py'), "report"],
       { timeout: 15000, encoding: "utf8", stdio: "pipe" }
     );
   } catch (e) {
