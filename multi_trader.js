@@ -99,9 +99,9 @@ const CONFIG = {
       ? "https://paper-api.alpaca.markets"
       : "https://api.alpaca.markets",
   },
-  pythonPath: "C:/Users/Ripple Nova/anaconda3/python.exe",
-  quantEngine: "C:/Users/Ripple Nova/claude-tradingview-bot/quant_engine_v3.py",
-  botDir: "C:/Users/Ripple Nova/claude-tradingview-bot",
+  pythonPath: "python",
+  quantEngine: "quant_engine_v3.py",
+  botDir: ".",
 };
 
 const LOG_FILE = "multi-trade-log.json";

@@ -65,7 +65,7 @@ def fetch_klines(symbol="BTCUSDT", interval="15m", limit=1000):
     tf = BYBIT_TF_MAP.get(interval, "15")
     url = f"https://api.bybit.com/v5/market/kline?category=spot&symbol={symbol}&interval={tf}&limit={limit}"
     try:
-        req = Request(url, headers={"User-Agent": "QuantEngineV3/3.0"})
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urlopen(req, timeout=30) as resp:
             raw = json.loads(resp.read())
         if raw.get("retCode") != 0:
