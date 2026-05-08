@@ -8,7 +8,7 @@ Run: python portfolio_tracker.py learn     → update adaptive thresholds
 """
 
 import os, sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 from state_manager import load_json, save_json, state_path
 
