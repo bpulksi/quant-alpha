@@ -1,0 +1,115 @@
+{
+  "name": "QUANTI Retirement SIP Plan",
+  "created": "2026-05-07T22:01:46.004Z",
+  "totalInvested": 43800,
+  "monthlySIP": 1200,
+  "holdings": [
+    {
+      "sym": "VTI",
+      "name": "Vanguard Total US Market",
+      "cat": "core",
+      "invested": 2000
+    },
+    {
+      "sym": "VXUS",
+      "name": "Vanguard Total International",
+      "cat": "core",
+      "invested": 1500
+    },
+    {
+      "sym": "SCHD",
+      "name": "Schwab Dividend ETF",
+      "cat": "dividend",
+      "invested": 2000
+    },
+    {
+      "sym": "VIG",
+      "name": "Vanguard Dividend Appreciation",
+      "cat": "dividend",
+      "invested": 1500
+    },
+    {
+      "sym": "NVDA",
+      "name": "Nvidia",
+      "cat": "growth",
+      "invested": 1000
+    },
+    {
+      "sym": "MSFT",
+      "name": "Microsoft",
+      "cat": "moat",
+      "invested": 800
+    },
+    {
+      "sym": "GLD",
+      "name": "SPDR Gold ETF",
+      "cat": "hedge",
+      "invested": 500
+    },
+    {
+      "sym": "BTC",
+      "name": "Bitcoin",
+      "cat": "crypto",
+      "invested": 1000
+    },
+    {
+      "sym": "ETH",
+      "name": "Ethereum",
+      "cat": "crypto",
+      "invested": 800
+    },
+    {
+      "sym": "SOL",
+      "name": "Solana",
+      "cat": "crypto",
+      "invested": 500
+    }
+  ],
+  "monthlySIP": 240,
+  "sips": [
+    {
+      "id": 1,
+      "sym": "VTI",
+      "name": "Vanguard Total US Market",
+      "cat": "core",
+      "amount": 100,
+      "freq": "monthly",
+      "startDate": "2026-06-01",
+      "goal": "Retirement",
+      "totalInvested": 0
+    },
+    {
+      "id": 2,
+      "sym": "SCHD",
+      "name": "Schwab Dividend ETF",
+      "cat": "dividend",
+      "amount": 60,
+      "freq": "monthly",
+      "startDate": "2026-06-01",
+      "goal": "Passive Income",
+      "totalInvested": 0
+    },
+    {
+      "id": 3,
+      "sym": "VXUS",
+      "name": "Vanguard Total International",
+      "cat": "core",
+      "amount": 50,
+      "freq": "monthly",
+      "startDate": "2026-06-01",
+      "goal": "Diversification",
+      "totalInvested": 0
+    },
+    {
+      "id": 4,
+      "sym": "BTC",
+      "name": "Bitcoin",
+      "cat": "crypto",
+      "amount": 30,
+      "freq": "monthly",
+      "startDate": "2026-06-01",
+      "goal": "Digital Gold",
+      "totalInvested": 0
+    }
+  ]
+}
