@@ -1,78 +1,51 @@
 # Windows Setup Guide
 
-Everything in the main README applies — the only differences are how you launch TradingView with CDP enabled and where the files live.
+## Prerequisites
+
+| Tool | Version | Check |
+|------|---------|-------|
+| Node.js | 18+ | `node --version` |
+| Python | 3.9+ | `python --version` |
+| Git | any | `git --version` |
 
 ---
 
-## 1. Find your TradingView executable
-
-TradingView Desktop on Windows is installed as an `.msix` package. The executable is NOT in `Program Files` — it lives in a path like:
-
-```
-C:\Users\[YourName]\AppData\Local\Packages\TradingView.TradingViewDesktop_[hash]\LocalCache\Local\TradingView\TradingView.exe
-```
-
-To find the exact path:
-1. Open PowerShell
-2. Run:
-```powershell
-Get-AppxPackage -Name "TradingView*" | Select-Object -ExpandProperty InstallLocation
-```
-3. Inside that folder, look for `TradingView.exe`
-
----
-
-## 2. Launch TradingView with CDP enabled
-
-You need to launch TradingView with the `--remote-debugging-port=9222` flag so the MCP can connect.
-
-Close TradingView if it's running, then in PowerShell:
+## 1. Clone and install
 
 ```powershell
-& "C:\Users\[YourName]\AppData\Local\Packages\TradingView.TradingViewDesktop_[hash]\LocalCache\Local\TradingView\TradingView.exe" --remote-debugging-port=9222
+git clone https://github.com/bpulksi/quant-alpha.git
+cd quant-alpha
+npm install
+pip install pandas numpy scikit-learn ta requests
 ```
 
-Replace the path with the one you found in Step 1.
+## 2. Configure environment
 
-**Tip:** Save this as a `.ps1` script or a desktop shortcut so you don't have to type it every time.
-
----
-
-## 3. Configure the MCP
-
-In your Claude Code MCP config (`%APPDATA%\Claude\claude_desktop_config.json`), make sure the TradingView MCP is pointing to the right port:
-
-```json
-{
-  "mcpServers": {
-    "tradingview": {
-      "command": "npx",
-      "args": ["-y", "@tradingview/mcp-server"],
-      "env": {
-        "CDP_PORT": "9222"
-      }
-    }
-  }
-}
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
 
----
+Fill in:
+- `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` — from [alpaca.markets](https://alpaca.markets) → Paper Trading → API Keys
+- `TELEGRAM_BOT_TOKEN` — message [@BotFather](https://t.me/BotFather) → `/newbot`
+- `TELEGRAM_CHAT_ID` — message [@userinfobot](https://t.me/userinfobot)
 
-## 4. Verify the connection
+## 3. Train ML models (first time only, ~10 min)
 
-In Claude Code terminal:
-
+```powershell
+python quant_engine_v3.py train-all
 ```
-tv_health_check
+
+## 4. Run
+
+```powershell
+# Trading bot + dashboard at http://localhost:3000
+node --env-file=.env server.js
+
+# SIP dip alert — preview only
+node --env-file=.env sip_dip_alert.js --dry-run
+
+# SIP monthly reminder — test message
+node --env-file=.env sip_notifier.js --test
 ```
-
-If it returns `cdp_connected: true` — you're good. If not:
-- Make sure TradingView was launched with the `--remote-debugging-port=9222` flag (not opened normally)
-- Check that nothing else is using port 9222
-- Try closing and relaunching TradingView using the PowerShell command above
-
----
-
-## 5. Continue with the main setup
-
-Once `tv_health_check` passes, go back to the [main README](../README.md) and continue from Step 2.

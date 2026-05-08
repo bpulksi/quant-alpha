@@ -1,94 +1,71 @@
 # Linux Setup Guide
 
-Everything in the main README applies — the only differences are how TradingView is installed and launched on Linux.
+## Prerequisites
 
----
-
-## 1. Install TradingView Desktop
-
-TradingView Desktop is available for Linux via:
-
-**Option A — Flatpak (recommended):**
 ```bash
-flatpak install flathub com.tradingview.TradingViewDesktop
-```
+# Node.js 18+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-**Option B — Snap:**
-```bash
-sudo snap install tradingview
-```
+# Python 3.9+
+sudo apt-get install python3 python3-pip
 
-**Option C — AppImage:**
-Download from the [TradingView website](https://www.tradingview.com/desktop/) and make it executable:
-```bash
-chmod +x TradingView-*.AppImage
+# Git
+sudo apt-get install git
 ```
 
 ---
 
-## 2. Launch TradingView with CDP enabled
+## 1. Clone and install
 
-Close TradingView if it's running. Then launch with the remote debugging flag:
-
-**Flatpak:**
 ```bash
-flatpak run com.tradingview.TradingViewDesktop --remote-debugging-port=9222
+git clone https://github.com/bpulksi/quant-alpha.git
+cd quant-alpha
+npm install
+pip3 install pandas numpy scikit-learn ta requests
 ```
 
-**Snap:**
+## 2. Configure environment
+
 ```bash
-tradingview --remote-debugging-port=9222
+cp .env.example .env
+nano .env
 ```
 
-**AppImage:**
+Fill in:
+- `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` — from [alpaca.markets](https://alpaca.markets) → Paper Trading → API Keys
+- `TELEGRAM_BOT_TOKEN` — message [@BotFather](https://t.me/BotFather) → `/newbot`
+- `TELEGRAM_CHAT_ID` — message [@userinfobot](https://t.me/userinfobot)
+
+## 3. Train ML models (first time only, ~10 min)
+
 ```bash
-./TradingView-*.AppImage --remote-debugging-port=9222
+python3 quant_engine_v3.py train-all
 ```
 
-**Tip:** Create a shell alias so you don't have to remember the flag:
+## 4. Run
+
 ```bash
-echo 'alias tv="flatpak run com.tradingview.TradingViewDesktop --remote-debugging-port=9222"' >> ~/.bashrc
-source ~/.bashrc
-```
-Then just type `tv` to launch.
+# Trading bot + dashboard at http://localhost:3000
+node --env-file=.env server.js
 
----
+# SIP dip alert — preview only
+node --env-file=.env sip_dip_alert.js --dry-run
 
-## 3. Configure the MCP
-
-In your Claude Code MCP config (`~/.config/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "tradingview": {
-      "command": "npx",
-      "args": ["-y", "@tradingview/mcp-server"],
-      "env": {
-        "CDP_PORT": "9222"
-      }
-    }
-  }
-}
+# SIP monthly reminder — test message
+node --env-file=.env sip_notifier.js --test
 ```
 
----
+## 5. Run as a background service (optional)
 
-## 4. Verify the connection
+```bash
+# Install pm2
+npm install -g pm2
 
-In Claude Code terminal:
+# Start the trading bot
+pm2 start "node --env-file=.env server.js" --name quant-alpha
 
+# Auto-start on reboot
+pm2 startup
+pm2 save
 ```
-tv_health_check
-```
-
-If it returns `cdp_connected: true` — you're good. If not:
-- Confirm TradingView is running with `--remote-debugging-port=9222` (not launched normally)
-- Check nothing else is using port 9222: `lsof -i :9222`
-- Try: `pkill -f TradingView` then relaunch with the flag
-
----
-
-## 5. Continue with the main setup
-
-Once `tv_health_check` passes, go back to the [main README](../README.md) and continue from Step 2.

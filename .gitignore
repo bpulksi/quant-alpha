@@ -16,7 +16,12 @@ __pycache__/
 *.pyo
 
 # ML models — large binaries, regenerate with: python quant_engine_v3.py train-all
-models_v3/*.pkl
+*.pkl
+models_v3/
+
+# Temp/one-off data dumps
+_*.json
+quanti_data_embed.json
 
 # Node
 node_modules/
