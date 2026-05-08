@@ -11,9 +11,13 @@ Standalone test:
 """
 
 import os, sys, json, time, urllib.request, urllib.parse
+import concurrent.futures
 from datetime import datetime, timezone
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 CRYPTOPANIC_TOKEN    = os.getenv("CRYPTOPANIC_TOKEN", "")   # free tier available
 REDDIT_CLIENT_ID     = os.getenv("REDDIT_CLIENT_ID", "")
@@ -311,10 +315,17 @@ def fetch_all_news(symbol: str, lookback_hours: int = 24) -> list:
     ticker = _to_ticker(symbol)
     stock  = is_stock(symbol)
 
-    cp  = fetch_cryptopanic(ticker) if (CRYPTOPANIC_TOKEN and not stock) else []
-    cg  = fetch_coingecko_trending(ticker) if not stock else []
-    rd  = fetch_reddit(ticker)
-    rss = fetch_rss(ticker)
+    # Parallelize fetch calls using ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        f_cp  = executor.submit(fetch_cryptopanic, ticker) if (CRYPTOPANIC_TOKEN and not stock) else None
+        f_cg  = executor.submit(fetch_coingecko_trending, ticker) if not stock else None
+        f_rd  = executor.submit(fetch_reddit, ticker)
+        f_rss = executor.submit(fetch_rss, ticker)
+
+        cp  = f_cp.result() if f_cp else []
+        cg  = f_cg.result() if f_cg else []
+        rd  = f_rd.result()
+        rss = f_rss.result()
 
     all_news = cp + cg + rd + rss
 
