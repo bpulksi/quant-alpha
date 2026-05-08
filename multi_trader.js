@@ -756,6 +756,7 @@ async function run() {
   }
 
   saveLog(log);
+  writeFileSync("scan_results.json", JSON.stringify(scanSummary, null, 2));
   console.log("\n═══════════════════════════════════════════════════════════");
   console.log(`  Log saved → ${LOG_FILE}`);
   console.log(`  CSV saved → ${CSV_FILE}`);
