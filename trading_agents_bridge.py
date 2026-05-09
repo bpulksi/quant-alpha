@@ -13,7 +13,7 @@ Standalone test:
 """
 
 import os, sys, json, time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 load_dotenv()
 
