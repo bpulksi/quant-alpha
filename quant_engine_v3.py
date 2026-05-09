@@ -14,6 +14,7 @@ import sys
 import os
 import pickle
 import hashlib
+from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -981,6 +982,37 @@ def generate_full_signal(symbol="BTCUSDT", interval="15m"):
     }
 
 
+# ─── Parallel Helpers ──────────────────────────────────────────────────────
+
+def _safe_train(asset):
+    """Wrapper for parallel training to handle exceptions."""
+    try:
+        meta = train_model(asset)
+        return asset, {
+            "status": "OK",
+            "test_accuracy": meta["walk_forward"]["test_accuracy"],
+            "overfit_gap": meta["walk_forward"]["overfit_gap"],
+            "warning": meta["walk_forward"].get("overfit_warning"),
+            "reg_mae": meta["regressor_mae_pct"],
+        }
+    except Exception as e:
+        return asset, {"status": f"ERROR: {str(e)[:60]}"}
+
+def _safe_backtest(asset):
+    """Wrapper for parallel backtesting to handle exceptions."""
+    try:
+        return asset, {"status": "OK", "data": backtest(asset)}
+    except Exception as e:
+        return asset, {"status": f"ERROR: {str(e)[:60]}"}
+
+def _safe_scan(asset):
+    """Wrapper for parallel scanning to handle exceptions."""
+    try:
+        return asset, {"status": "OK", "data": generate_full_signal(asset)}
+    except Exception as e:
+        return asset, {"status": f"ERROR: {str(e)[:60]}"}
+
+
 # ─── CLI ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -1002,22 +1034,15 @@ if __name__ == "__main__":
             "TRUMPUSDT", "PEPEUSDT", "SHIBUSDT", "LTCUSDT",
         ]
         print("=" * 60)
-        print("  QUANT ENGINE V3 — Training ALL 20 Asset Models")
+        print(f"  QUANT ENGINE V3 — Training ALL {len(assets)} Asset Models (Parallel)")
         print("=" * 60)
         results = {}
-        for asset in assets:
-            try:
-                meta = train_model(asset)
-                results[asset] = {
-                    "status": "OK",
-                    "test_accuracy": meta["walk_forward"]["test_accuracy"],
-                    "overfit_gap": meta["walk_forward"]["overfit_gap"],
-                    "warning": meta["walk_forward"].get("overfit_warning"),
-                    "reg_mae": meta["regressor_mae_pct"],
-                }
-            except Exception as e:
-                results[asset] = {"status": f"ERROR: {str(e)[:60]}"}
-                print(f"  ERROR training {asset}: {e}")
+
+        with ProcessPoolExecutor() as executor:
+            for asset, res in executor.map(_safe_train, assets):
+                results[asset] = res
+                if res["status"] != "OK":
+                    print(f"  ERROR training {asset}: {res['status']}")
 
         print("\n" + "=" * 60)
         print("  TRAINING SUMMARY")
@@ -1047,15 +1072,16 @@ if __name__ == "__main__":
             "TRUMPUSDT", "PEPEUSDT", "SHIBUSDT", "LTCUSDT",
         ]
         print("=" * 60)
-        print("  QUANT ENGINE V3 — Multi-Asset Backtest (with costs)")
+        print(f"  QUANT ENGINE V3 — Multi-Asset Backtest (Parallel, {len(assets)} assets)")
         print("=" * 60)
         all_results = {}
-        for asset in assets:
-            try:
-                r = backtest(asset)
-                all_results[asset] = r
-            except Exception as e:
-                print(f"  ERROR backtesting {asset}: {e}")
+
+        with ProcessPoolExecutor() as executor:
+            for asset, res in executor.map(_safe_backtest, assets):
+                if res["status"] == "OK":
+                    all_results[asset] = res["data"]
+                else:
+                    print(f"  ERROR backtesting {asset}: {res['status']}")
 
         print("\n" + "=" * 70)
         print("  BACKTEST COMPARISON (with transaction costs)")
@@ -1103,24 +1129,26 @@ if __name__ == "__main__":
             "LTCUSDT",
         ]
         print("=" * 60)
-        print("  QUANT ENGINE V3 — Full Market Scanner (20 assets)")
+        print(f"  QUANT ENGINE V3 — Full Market Scanner (Parallel, {len(assets)} assets)")
         print("=" * 60)
         results = []
-        for asset in assets:
-            try:
-                r = generate_full_signal(asset)
-                results.append({
-                    "symbol": asset, "price": r["indicators"]["price"],
-                    "regime": r["regime"]["regime"], "direction": r["regime"]["direction"],
-                    "signal": r["final_signal"]["action"], "confidence": r["final_signal"]["confidence"],
-                    "anomaly": r["ml_signal"].get("is_anomaly", False),
-                    "pred_return": r["ml_signal"].get("predicted_return_pct", 0),
-                    "reason": r["rule_signal"]["reason"],
-                })
-                anom = "!" if r["ml_signal"].get("is_anomaly") else " "
-                print(f"  {anom} {asset:12s} | {r['regime']['regime']:10s} | {r['final_signal']['action']:4s} ({r['final_signal']['confidence']:.0%}) | ${r['indicators']['price']:>10,.2f} | pred={r['ml_signal'].get('predicted_return_pct',0):+.2f}%")
-            except Exception as e:
-                print(f"  {asset:12s} | ERROR: {str(e)[:50]}")
+
+        with ProcessPoolExecutor() as executor:
+            for asset, res in executor.map(_safe_scan, assets):
+                if res["status"] != "OK":
+                    print(f"  {asset:12s} | ERROR: {res['status']}")
+                else:
+                    r = res["data"]
+                    results.append({
+                        "symbol": asset, "price": r["indicators"]["price"],
+                        "regime": r["regime"]["regime"], "direction": r["regime"]["direction"],
+                        "signal": r["final_signal"]["action"], "confidence": r["final_signal"]["confidence"],
+                        "anomaly": r["ml_signal"].get("is_anomaly", False),
+                        "pred_return": r["ml_signal"].get("predicted_return_pct", 0),
+                        "reason": r["rule_signal"]["reason"],
+                    })
+                    anom = "!" if r["ml_signal"].get("is_anomaly") else " "
+                    print(f"  {anom} {asset:12s} | {r['regime']['regime']:10s} | {r['final_signal']['action']:4s} ({r['final_signal']['confidence']:.0%}) | ${r['indicators']['price']:>10,.2f} | pred={r['ml_signal'].get('predicted_return_pct',0):+.2f}%")
         print("\n" + json.dumps(results, indent=2))
 
     elif cmd == "validate":
