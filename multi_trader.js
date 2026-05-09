@@ -719,28 +719,66 @@ async function run() {
     writeTradeCsv(logEntry);
   }
 
-  // ─── Telegram — only notify when a trade was actually placed ──────────────
+  // ─── Telegram — human-friendly alert, only when a trade fires ────────────
   const executed = scanSummary.filter(s => s.traded);
   if (executed.length > 0) {
-    const mode   = CONFIG.paperTrading ? "📋 PAPER" : "🔴 LIVE";
-    const todayN = countTodaysTrades(log);
-    const lines  = [`${mode} TRADE — ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} UTC`, ""];
+    const isPaper  = CONFIG.paperTrading;
+    const todayN   = countTodaysTrades(log);
+    const time     = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
     for (const s of executed) {
-      const emoji = s.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
-      const stop  = s.action === "BUY" ? ` | stop -2%` : "";
-      const tp    = s.action === "BUY" ? ` | TP +5%`   : "";
-      lines.push(
-        `${emoji}  ${s.alpacaSymbol}`,
-        `   Price:   $${s.price?.toLocaleString()}`,
-        `   Size:    $${(s.tradeSize || 0).toFixed(0)}`,
-        `   Conf:    ${(s.confidence * 100).toFixed(0)}%${stop}${tp}`,
-        `   Regime:  ${s.regime}`,
-        ...(s.reason ? [`   Signal:  ${s.reason}`] : []),
-        "",
-      );
+      const isBuy  = s.action === "BUY";
+      const conf   = Math.round(s.confidence * 100);
+      const size   = (s.tradeSize || 0).toFixed(0);
+      const price  = s.price?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+      // Human-readable why
+      const why = s.reason
+        ? s.reason.replace(/ADX>\d+/g, "strong trend").replace(/\+/g, "and")
+        : `${s.regime.toLowerCase()} market conditions`;
+
+      // Profit potential
+      const potentialGain = (s.tradeSize * 0.05).toFixed(0);
+      const maxLoss       = (s.tradeSize * 0.02).toFixed(0);
+
+      // Confidence label
+      const confLabel = conf >= 90 ? "Very high confidence 🔥"
+                      : conf >= 80 ? "High confidence ✅"
+                      : "Good confidence 👍";
+
+      const lines = [];
+
+      if (isBuy) {
+        lines.push(
+          `💰 Time to BUY — ${s.alpacaSymbol}`,
+          ``,
+          `The bot just bought ${s.alpacaSymbol} at $${price}.`,
+          `${confLabel} (${conf}%).`,
+          ``,
+          `Why now? ${why}.`,
+          ``,
+          `🎯 Target: +5% → potential +$${potentialGain}`,
+          `🛑 Protected: auto stop-loss at -2% (max loss -$${maxLoss})`,
+          ``,
+          isPaper ? `📋 Paper trade — no real money yet` : `✅ Live order placed on Alpaca`,
+          `Trade ${todayN} of ${CONFIG.maxTradesPerDay} today`,
+        );
+      } else {
+        lines.push(
+          `📤 Selling — ${s.alpacaSymbol}`,
+          ``,
+          `The bot is selling ${s.alpacaSymbol} at $${price}.`,
+          `${confLabel} (${conf}%).`,
+          ``,
+          `Why now? ${why}. Locking in gains before a potential pullback.`,
+          ``,
+          isPaper ? `📋 Paper trade — no real money yet` : `✅ Live order placed on Alpaca`,
+          `Trade ${todayN} of ${CONFIG.maxTradesPerDay} today`,
+        );
+      }
+
+      sendTelegram(lines.join("\n"));
     }
-    lines.push(`Trades today: ${todayN}/${CONFIG.maxTradesPerDay}`);
-    sendTelegram(lines.join("\n"));
   }
 
   // ─── Sync portfolio tracker ────────────────────────────────────────────
