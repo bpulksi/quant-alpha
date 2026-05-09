@@ -31,6 +31,19 @@ const DATA_DIR = process.env.DATA_DIR || __dirname;
 
 const app = express();
 
+// ── Public routes (Health check for Railway / uptime monitors) ────────────────
+// These are placed BEFORE auth so monitors can hit them without credentials.
+app.get("/health", (req, res) => {
+  const stateFile = path.join(DATA_DIR, "multi-trade-log.json");
+  const exists    = fs.existsSync(stateFile);
+  res.json({
+    status:    "ok",
+    bot:       botRunning ? "running" : "idle",
+    log:       exists,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ── Basic auth (protects dashboard on cloud) ─────────────────────────────────
 // Set DASH_USER and DASH_PASS in Railway environment variables.
 // If not set: auth is disabled locally (safe for dev, required for cloud).
@@ -46,6 +59,26 @@ if (DASH_USER && DASH_PASS) {
 } else {
   console.log("  ⚠️  No DASH_USER/DASH_PASS set — dashboard is open (fine locally, set on Railway)");
 }
+
+// ── Static Asset Security Middleware ─────────────────────────────────────────
+// Prevent access to sensitive source files even if they are in the static root.
+app.use((req, res, next) => {
+  const blockedFiles = [
+    'server.js', 'package.json', 'package-lock.json', '.env',
+    'multi_trader.js', 'requirements.txt', 'AGENTS.md', 'README.md',
+    'nixpacks.toml', 'railway.json'
+  ];
+  const requestedFile = path.basename(req.path).toLowerCase();
+
+  // Block specific sensitive files and all hidden files (starting with dot)
+  if (blockedFiles.includes(requestedFile) ||
+      requestedFile.startsWith('.') ||
+      requestedFile.endsWith('.py') ||
+      requestedFile.endsWith('.log')) {
+    return res.status(403).send("Forbidden");
+  }
+  next();
+});
 
 // ── Serve JSON state files from DATA_DIR (persistent volume on Railway) ───────
 // These are the live state files the dashboard reads (portfolio, research, etc.)
@@ -72,18 +105,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
-// Health check for Railway / uptime monitors
-app.get("/health", (req, res) => {
-  const stateFile = path.join(__dirname, "multi-trade-log.json");
-  const exists    = fs.existsSync(stateFile);
-  res.json({
-    status:    "ok",
-    bot:       botRunning ? "running" : "idle",
-    log:       exists,
-    timestamp: new Date().toISOString(),
-  });
-});
-
 // Live status endpoint — last N lines of bot output
 app.get("/status", (req, res) => {
   res.json({
@@ -98,7 +119,7 @@ app.get("/status", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n  ✅ Dashboard live → http://localhost:${PORT}`);
-  console.log(`  📊 State files served from: ${__dirname}\n`);
+  console.log(`  📊 State files served from: ${DATA_DIR}\n`);
 });
 
 // ─── Bot runner — spawns multi_trader.js every BOT_INTERVAL ms ───────────────
