@@ -589,6 +589,19 @@ async function run() {
       continue;
     }
 
+    // Regime filter -- never trade in VOLATILE regime (whipsaw kills win rate)
+    if (regime.regime === "VOLATILE") {
+      console.log(`\n  SKIPPED -- VOLATILE regime (ADX unstable, no edge)`);
+      continue;
+    }
+
+    // Volume filter -- require meaningful momentum before entering
+    const minVolumeRatio = isStock(symbol) ? 1.10 : 1.15;
+    if (indicators.volume_ratio < minVolumeRatio && final_signal.action !== "HOLD") {
+      console.log(`\n  SKIPPED -- volume ${indicators.volume_ratio.toFixed(2)}x below minimum ${minVolumeRatio}x (no momentum)`);
+      continue;
+    }
+
     const shouldTrade = final_signal.action !== "HOLD" && effectiveConfidence > 0.62;
 
     // Dynamic position sizing — Kelly-inspired tiers scaled to 100k portfolio
@@ -655,9 +668,9 @@ async function run() {
         logEntry.orderPlaced = true;
         logEntry.orderId = `PAPER-${Date.now()}`;
         if (final_signal.action === "BUY") {
-          logEntry.stopPrice = indicators.price * 0.97;
-          logEntry.tpPrice   = indicators.price * 1.025;
-          console.log(`  🛑 Paper stop: $${logEntry.stopPrice.toFixed(4)} | 🎯 Paper TP: $${logEntry.tpPrice.toFixed(4)}`);
+          logEntry.stopPrice = indicators.price * 0.98;   // 2% stop
+          logEntry.tpPrice   = indicators.price * 1.05;   // 5% TP → 2.5:1 R:R
+          console.log(`  🛑 Paper stop: $${logEntry.stopPrice.toFixed(4)} (-2%) | 🎯 Paper TP: $${logEntry.tpPrice.toFixed(4)} (+5%)`);
         }
         scanSummary[scanSummary.length - 1].traded = true;
       } else {
@@ -675,16 +688,16 @@ async function run() {
             console.log(`  ✅ ORDER PLACED — ${order.orderId}`);
             scanSummary[scanSummary.length - 1].traded = true;
 
-            // Trailing stop (1.5% trail) + take-profit (2.5% above entry)
+            // Trailing stop (1.5% trail) + take-profit (5% above entry) → 2.5:1 R:R
             if (side === "BUY") {
-              const tpPrice = indicators.price * 1.025;
+              const tpPrice = indicators.price * 1.05;    // 5% TP
               const qty = tradeSize / indicators.price;
               logEntry.tpPrice = tpPrice;
-              // Trailing stop: locks in gains as price rises (beats fixed -3% stop)
+              // Trailing stop: locks in gains as price rises (beats fixed -2% stop)
               const trailResult = await placeAlpacaTrailingStop(alpacaSymbol, qty, 1.5);
               if (trailResult) logEntry.trailingStopId = trailResult.trailingStopId;
-              // Fixed stop fallback at -3% in case trailing not supported
-              const stopPrice = indicators.price * 0.97;
+              // Fixed stop fallback at -2% in case trailing not supported
+              const stopPrice = indicators.price * 0.98;  // 2% stop
               logEntry.stopPrice = stopPrice;
               if (!trailResult) {
                 const stopResult = await placeAlpacaStopOrder(alpacaSymbol, qty, stopPrice);
