@@ -630,6 +630,7 @@ async function run() {
       regime: regime.regime,
       ml_pred: ml_signal.predicted_return_pct,
       reason: rule_signal.reason || "",
+      tradeSize,
       traded: false,
     });
 
@@ -718,44 +719,29 @@ async function run() {
     writeTradeCsv(logEntry);
   }
 
-  // ─── Telegram Summary ──────────────────────────────────────────────────
-  const buys = scanSummary.filter(s => s.action === "BUY" && s.confidence > 0.62);
-  const sells = scanSummary.filter(s => s.action === "SELL" && s.confidence > 0.62);
-
-  let tgMsg = `*Quant Bot Scan — ${new Date().toISOString().slice(0, 16)} UTC*\n`;
-  tgMsg += `Mode: ${CONFIG.paperTrading ? "PAPER" : "LIVE"} | Assets: ${CONFIG.symbols.length}\n\n`;
-
-  if (buys.length > 0) {
-    tgMsg += `*🟢 BUY Signals:*\n`;
-    for (const s of buys) {
-      tgMsg += `  \`${s.alpacaSymbol}\` @ $${s.price?.toLocaleString()} (${(s.confidence * 100).toFixed(0)}% conf, ${s.ml_pred > 0 ? "+" : ""}${s.ml_pred?.toFixed(2)}%)\n`;
-      if (s.reason) tgMsg += `    _${s.reason}_\n`;
+  // ─── Telegram — only notify when a trade was actually placed ──────────────
+  const executed = scanSummary.filter(s => s.traded);
+  if (executed.length > 0) {
+    const mode   = CONFIG.paperTrading ? "📋 PAPER" : "🔴 LIVE";
+    const todayN = countTodaysTrades(log);
+    const lines  = [`${mode} TRADE — ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} UTC`, ""];
+    for (const s of executed) {
+      const emoji = s.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
+      const stop  = s.action === "BUY" ? ` | stop -2%` : "";
+      const tp    = s.action === "BUY" ? ` | TP +5%`   : "";
+      lines.push(
+        `${emoji}  ${s.alpacaSymbol}`,
+        `   Price:   $${s.price?.toLocaleString()}`,
+        `   Size:    $${(s.tradeSize || 0).toFixed(0)}`,
+        `   Conf:    ${(s.confidence * 100).toFixed(0)}%${stop}${tp}`,
+        `   Regime:  ${s.regime}`,
+        ...(s.reason ? [`   Signal:  ${s.reason}`] : []),
+        "",
+      );
     }
+    lines.push(`Trades today: ${todayN}/${CONFIG.maxTradesPerDay}`);
+    sendTelegram(lines.join("\n"));
   }
-
-  if (sells.length > 0) {
-    tgMsg += `\n*🔴 SELL Signals:*\n`;
-    for (const s of sells) {
-      tgMsg += `  \`${s.alpacaSymbol}\` @ $${s.price?.toLocaleString()} (${(s.confidence * 100).toFixed(0)}% conf, ${s.ml_pred > 0 ? "+" : ""}${s.ml_pred?.toFixed(2)}%)\n`;
-      if (s.reason) tgMsg += `    _${s.reason}_\n`;
-    }
-  }
-
-  if (buys.length === 0 && sells.length === 0) {
-    tgMsg += `No actionable signals this cycle.\n`;
-    // Show top movers
-    const movers = [...scanSummary].filter(s => s.price).sort((a, b) => Math.abs(b.ml_pred || 0) - Math.abs(a.ml_pred || 0)).slice(0, 5);
-    if (movers.length > 0) {
-      tgMsg += `\n*Top predicted movers:*\n`;
-      for (const s of movers) {
-        tgMsg += `  \`${s.alpacaSymbol}\` ${s.ml_pred > 0 ? "+" : ""}${s.ml_pred?.toFixed(2)}% | ${s.regime}\n`;
-      }
-    }
-  }
-
-  tgMsg += `\nTrades today: ${countTodaysTrades(log)}/${CONFIG.maxTradesPerDay}`;
-
-  sendTelegram(tgMsg);
 
   // ─── Sync portfolio tracker ────────────────────────────────────────────
   try {
