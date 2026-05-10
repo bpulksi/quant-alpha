@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quant Alpha — Test & Simulation Report</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        :root {
+            --bg0: #040810; --bg1: #080f1e; --bg2: #0c1528; --bg3: #111d35;
+            --border: #1a2a45; --border2: #243550;
+            --blue: #00c8ff; --green: #00e89d; --red: #ff3d5a; --yellow: #ffd000;
+            --t1: #dde8ff; --t2: #7a8fb0; --t3: #3d5070;
+            --font-mono: 'JetBrains Mono', monospace; --font-ui: 'Inter', sans-serif;
+        }
+        body {
+            background: var(--bg0); color: var(--t1); font-family: var(--font-ui);
+            margin: 0; padding: 20px; line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { font-family: var(--font-mono); font-size: 1.5rem; margin: 0; background: linear-gradient(90deg, var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: var(--bg1); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+        .card-title { font-family: var(--font-mono); font-size: 0.9rem; color: var(--t2); text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid var(--bg3); padding-bottom: 5px; }
+        .status-pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; font-family: var(--font-mono); }
+        .status-pass { background: rgba(0, 232, 157, 0.1); color: var(--green); border: 1px solid var(--green); }
+        .status-fail { background: rgba(255, 61, 90, 0.1); color: var(--red); border: 1px solid var(--red); }
+        pre { background: var(--bg0); padding: 15px; border-radius: 5px; font-family: var(--font-mono); font-size: 0.8rem; overflow-x: auto; border: 1px solid var(--bg3); }
+        table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem; }
+        th { text-align: left; color: var(--t3); padding: 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 10px; border-bottom: 1px solid var(--bg3); }
+        .decision-buy { color: var(--green); font-weight: 700; }
+        .decision-hold { color: var(--t3); }
+        .decision-sell { color: var(--red); font-weight: 700; }
+        .btn { background: var(--bg3); border: 1px solid var(--border2); color: var(--t2); padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.8rem; transition: 0.2s; }
+        .btn:hover { background: var(--border); color: var(--t1); border-color: var(--blue); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TEST & SIMULATION REPORT</h1>
+            <div>
+                <a href="/" class="btn">BACK TO DASHBOARD</a>
+                <button class="btn" onclick="location.reload()">REFRESH</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="card-title">Unit Test Results (Automated Reliability Checks)</div>
+            <div id="test-status-container">Loading...</div>
+            <pre id="test-output">Running tests...</pre>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Simulation Decisions (What to Buy / Not Buy)</div>
+            <table id="decision-table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Type</th>
+                        <th>Decision</th>
+                        <th>ML Confidence</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="decision-body">
+                    <tr><td colspan="5">Loading decisions...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadReport() {
+            // Load Unit Test Results
+            try {
+                const testRes = await fetch('test_results.json?t=' + Date.now());
+                if (testRes.ok) {
+                    const data = await testRes.json();
+                    const statusClass = data.status === 'PASS' ? 'status-pass' : 'status-fail';
+                    document.getElementById('test-status-container').innerHTML = `
+                        <div style="margin-bottom: 10px;">
+                            Status: <span class="status-pill ${statusClass}">${data.status}</span>
+                            <span style="color: var(--t3); margin-left: 15px; font-size: 0.8rem;">Last Run: ${new Date(data.last_run).toLocaleString()}</span>
+                        </div>
+                    `;
+                    document.getElementById('test-output').textContent = data.output;
+                }
+            } catch (e) {
+                document.getElementById('test-status-container').textContent = "No test data found. Waiting for first bot run.";
+            }
+
+            // Load Simulation Decisions
+            try {
+                const scanRes = await fetch('scan_results.json?t=' + Date.now());
+                if (scanRes.ok) {
+                    const data = await scanRes.json();
+                    const body = document.getElementById('decision-body');
+                    body.innerHTML = '';
+                    data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const isStock = !item.symbol.endsWith('USDT');
+                        const decisionClass = item.action === 'BUY' ? 'decision-buy' : (item.action === 'SELL' ? 'decision-sell' : 'decision-hold');
+                        tr.innerHTML = `
+                            <td>${item.symbol}</td>
+                            <td style="color: var(--t3)">${isStock ? 'STOCK' : 'CRYPTO'}</td>
+                            <td class="${decisionClass}">${item.action}</td>
+                            <td>${(item.confidence * 100).toFixed(1)}%</td>
+                            <td style="font-size: 0.75rem; color: var(--t2)">${item.reason || 'No specific reason provided'}</td>
+                        `;
+                        body.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                document.getElementById('decision-body').innerHTML = '<tr><td colspan="5">No simulation data found.</td></tr>';
+            }
+        }
+
+        loadReport();
+        setInterval(loadReport, 30000);
+    </script>
+</body>
+</html>

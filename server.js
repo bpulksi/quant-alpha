@@ -10,7 +10,7 @@
 
 import express    from "express";
 import basicAuth  from "express-basic-auth";
-import { spawn }  from "child_process";
+import { spawn, execSync }  from "child_process";
 import path       from "path";
 import { fileURLToPath } from "url";
 import fs         from "fs";
@@ -72,6 +72,11 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
+// Test Report → new simulation/test view
+app.get("/tests", (req, res) => {
+  res.sendFile(path.join(__dirname, "test_report.html"));
+});
+
 // Health check for Railway / uptime monitors
 app.get("/health", (req, res) => {
   const stateFile = path.join(__dirname, "multi-trade-log.json");
@@ -113,6 +118,22 @@ function runBot() {
   if (botRunning) {
     console.log("  [server] Bot already running — skipping this tick");
     return;
+  }
+
+  // Run unit tests before each bot run to ensure reliability
+  try {
+    const testOutput = execSync("node --test multi_trader.test.js", { encoding: "utf8" });
+    fs.writeFileSync("test_results.json", JSON.stringify({
+      last_run: new Date().toISOString(),
+      status: "PASS",
+      output: testOutput
+    }, null, 2));
+  } catch (e) {
+    fs.writeFileSync("test_results.json", JSON.stringify({
+      last_run: new Date().toISOString(),
+      status: "FAIL",
+      output: e.stdout || e.message
+    }, null, 2));
   }
 
   runCount++;
