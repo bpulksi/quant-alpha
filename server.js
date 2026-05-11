@@ -10,7 +10,7 @@
 
 import express    from "express";
 import basicAuth  from "express-basic-auth";
-import { spawn }  from "child_process";
+import { spawn, execSync } from "child_process";
 import path       from "path";
 import { fileURLToPath } from "url";
 import fs         from "fs";
@@ -72,6 +72,22 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
+// Test reporting dashboard
+app.get("/tests", (req, res) => {
+  res.sendFile(path.join(__dirname, "test_report.html"));
+});
+
+// Serve test results explicitly
+app.get("/test_results.json", (req, res) => {
+  const filePath = path.join(DATA_DIR, "test_results.json");
+  if (fs.existsSync(filePath)) {
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: "No test results found" });
+  }
+});
+
 // Health check for Railway / uptime monitors
 app.get("/health", (req, res) => {
   const stateFile = path.join(__dirname, "multi-trade-log.json");
@@ -124,6 +140,15 @@ function runBot() {
   console.log(`  [server] Bot run #${runCount} — ${lastBotRun}`);
   console.log(`  [server] Next run: ${nextBotRun}`);
   console.log(`${"=".repeat(65)}\n`);
+
+  // Run tests and capture results
+  try {
+    console.log("  [server] Running pre-flight unit tests...");
+    execSync(`node --test --test-reporter=tap > "${path.join(DATA_DIR, "test_results.json")}" 2>&1`);
+    console.log("  [server] Tests completed. Results saved to test_results.json");
+  } catch (err) {
+    console.error("  [server] Tests failed or encountered an error. Results saved to test_results.json.");
+  }
 
   const bot = spawn("node", [BOT_SCRIPT], {
     stdio: "inherit",   // pipe bot stdout/stderr straight to server stdout

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test & Simulation Report</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f4f5;
+      color: #18181b;
+      margin: 0;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #09090b;
+      border-bottom: 1px solid #e4e4e7;
+      padding-bottom: 0.5rem;
+    }
+    pre {
+      background-color: #27272a;
+      color: #f8fafc;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    .status.passed { background-color: #dcfce7; color: #166534; }
+    .status.failed { background-color: #fee2e2; color: #991b1b; }
+    .status.loading { background-color: #fef9c3; color: #854d0e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Test Results Dashboard</h1>
+    <div id="statusBadge" class="status loading">Loading...</div>
+    <h2>Raw Output (TAP format)</h2>
+    <pre id="testOutput">Fetching test results...</pre>
+  </div>
+
+  <script>
+    async function fetchResults() {
+      try {
+        const response = await fetch('/test_results.json');
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const text = await response.text();
+        const testOutput = document.getElementById('testOutput');
+        const statusBadge = document.getElementById('statusBadge');
+
+        // Basic check: TAP output typically ends with "ok" or "# fail 0" if all is well.
+        // It outputs # fail <number> if something failed.
+        if (text.includes('# fail 0') || !text.includes('not ok')) {
+            statusBadge.className = 'status passed';
+            statusBadge.textContent = 'All Tests Passed';
+        } else {
+            statusBadge.className = 'status failed';
+            statusBadge.textContent = 'Tests Failed';
+        }
+
+        testOutput.textContent = text;
+      } catch (error) {
+        console.error('Error fetching test results:', error);
+        document.getElementById('testOutput').textContent = 'Error loading test results: ' + error.message;
+        const statusBadge = document.getElementById('statusBadge');
+        statusBadge.className = 'status failed';
+        statusBadge.textContent = 'Error Loading Results';
+      }
+    }
+
+    // Fetch on load
+    fetchResults();
+  </script>
+</body>
+</html>

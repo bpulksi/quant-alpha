@@ -798,4 +798,7 @@ async function run() {
   console.log("═══════════════════════════════════════════════════════════\n");
 }
 
-run().catch(console.error);
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  run().catch(console.error);
+}
