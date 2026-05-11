@@ -232,7 +232,10 @@ function scheduleLoop() {
 }
 
 // ─── Entry ────────────────────────────────────────────────────────────────────
-const args = process.argv.slice(2);
-if      (args.includes("--schedule")) scheduleLoop();
-else if (args.includes("--dry-run"))  scan(true);
-else                                   scan(false).then(() => process.exit(0));
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  if      (args.includes("--schedule")) scheduleLoop();
+  else if (args.includes("--dry-run"))  scan(true);
+  else                                   scan(false).then(() => process.exit(0));
+}

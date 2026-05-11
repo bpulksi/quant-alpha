@@ -130,19 +130,22 @@ function scheduleLoop() {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-const args = process.argv.slice(2);
+import { fileURLToPath } from "url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
 
-if (args.includes("--schedule")) {
-  scheduleLoop();
-} else {
-  const isTest = args.includes("--test");
-  if (isTest) console.log("🧪  Sending test SIP reminder to Telegram...\n");
-  else        console.log("📤  Sending SIP reminder now...\n");
+  if (args.includes("--schedule")) {
+    scheduleLoop();
+  } else {
+    const isTest = args.includes("--test");
+    if (isTest) console.log("🧪  Sending test SIP reminder to Telegram...\n");
+    else        console.log("📤  Sending SIP reminder now...\n");
 
-  const plan = loadPlan();
-  const msg  = buildMessage(plan, isTest);
-  console.log("Preview:\n" + "─".repeat(50));
-  console.log(msg);
-  console.log("─".repeat(50) + "\n");
-  sendTelegram(msg).then(() => process.exit(0));
+    const plan = loadPlan();
+    const msg  = buildMessage(plan, isTest);
+    console.log("Preview:\n" + "─".repeat(50));
+    console.log(msg);
+    console.log("─".repeat(50) + "\n");
+    sendTelegram(msg).then(() => process.exit(0));
+  }
 }
