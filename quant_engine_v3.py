@@ -865,20 +865,8 @@ def backtest(symbol="BTCUSDT", interval="15m", initial_capital=1000, trade_size=
 
 # ─── Full Signal Generator ────────────────────────────────────────────────
 
-def generate_full_signal(symbol="BTCUSDT", interval="15m"):
-    tf_data = fetch_multi_timeframe(symbol)
-    df = tf_data.get('15m')
-    if df is None:
-        df = fetch_binance_klines(symbol, interval, 500)
-
-    features = engineer_features(df)
-    features = add_htf_features(features, tf_data.get('1h'), tf_data.get('4h'))
-
-    regime_info = detect_regime(df, features)
-    strategy = STRATEGIES.get(regime_info["regime"], STRATEGIES["RANGING"])
-    rule_signal = generate_signal(features, regime_info)
-    ml_signal = predict_ml(features, symbol=symbol)
-
+def apply_signal_rules(last: pd.Series, rule_signal: dict, ml_signal: dict) -> tuple[str, float]:
+    """Applies combination logic, cost filtering, and quality gates to rule and ML signals."""
     final_action = "HOLD"
     final_confidence = 0.0
 
@@ -907,8 +895,6 @@ def generate_full_signal(symbol="BTCUSDT", interval="15m"):
         pred_ret = abs(ml_signal.get("predicted_return_pct", 0)) / 100
         if pred_ret < TOTAL_COST_PER_TRADE * 2 and final_confidence < 0.80:
             final_action = "HOLD"; final_confidence = 0
-
-    last = features.iloc[-1]
 
     # ── Quality Gate 1: ATR Flatline Detector ─────────────────────────────────
     # If ATR is near zero the price is frozen → all indicators are garbage (OP lesson)
@@ -943,6 +929,27 @@ def generate_full_signal(symbol="BTCUSDT", interval="15m"):
             final_action = "HOLD"; final_confidence = 0.0  # counter-trend on 1h
         if htf_rsi is not None and not pd.isna(htf_rsi) and float(htf_rsi) > 75:
             final_action = "HOLD"; final_confidence = 0.0  # overbought on 1h, chasing
+
+    return final_action, final_confidence
+
+
+def generate_full_signal(symbol="BTCUSDT", interval="15m"):
+    """Main entry point for generating signals in production"""
+    tf_data = fetch_multi_timeframe(symbol)
+    df = tf_data.get('15m')
+    if df is None:
+        df = fetch_binance_klines(symbol, interval, 500)
+
+    features = engineer_features(df)
+    features = add_htf_features(features, tf_data.get('1h'), tf_data.get('4h'))
+
+    regime_info = detect_regime(df, features)
+    strategy = STRATEGIES.get(regime_info["regime"], STRATEGIES["RANGING"])
+    rule_signal = generate_signal(features, regime_info)
+    ml_signal = predict_ml(features, symbol=symbol)
+
+    last = features.iloc[-1]
+    final_action, final_confidence = apply_signal_rules(last, rule_signal, ml_signal)
     def r(k):
         v = last.get(k)
         return round(float(v), 2) if v is not None and not pd.isna(v) else None
