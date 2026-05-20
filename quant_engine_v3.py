@@ -16,7 +16,7 @@ import pickle
 import hashlib
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from urllib.request import urlopen, Request
 from sklearn.ensemble import (
     GradientBoostingClassifier, RandomForestClassifier,
