@@ -13,7 +13,6 @@ import json
 import sys
 import os
 import pickle
-import hashlib
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
