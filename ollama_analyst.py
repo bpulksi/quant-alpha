@@ -8,7 +8,7 @@ Standalone test:
   python ollama_analyst.py
 """
 
-import json, re, urllib.request, urllib.parse, os
+import json, re, urllib.request, os
 from dotenv import load_dotenv
 load_dotenv()
 
