@@ -18,7 +18,7 @@ Usage:
     path = state_path("portfolio_state.json")   # full path string
 """
 
-import os, json, tempfile
+import os, json
 from pathlib import Path
 
 # ── Directory resolution ──────────────────────────────────────────────────────
