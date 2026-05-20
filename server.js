@@ -31,6 +31,19 @@ const DATA_DIR = process.env.DATA_DIR || __dirname;
 
 const app = express();
 
+// Health check for Railway / uptime monitors
+// (Placed before auth to ensure it's always publicly accessible)
+app.get("/health", (req, res) => {
+  const stateFile = path.join(__dirname, "multi-trade-log.json");
+  const exists    = fs.existsSync(stateFile);
+  res.json({
+    status:    "ok",
+    bot:       botRunning ? "running" : "idle",
+    log:       exists,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ── Basic auth (protects dashboard on cloud) ─────────────────────────────────
 // Set DASH_USER and DASH_PASS in Railway environment variables.
 // If not set: auth is disabled locally (safe for dev, required for cloud).
@@ -44,7 +57,16 @@ if (DASH_USER && DASH_PASS) {
   }));
   console.log(`  🔒 Dashboard protected — user: ${DASH_USER}`);
 } else {
-  console.log("  ⚠️  No DASH_USER/DASH_PASS set — dashboard is open (fine locally, set on Railway)");
+  console.log("  ⚠️  No DASH_USER/DASH_PASS set — locking down non-localhost access.");
+  // Default-deny for external requests when auth is misconfigured
+  app.use((req, res, next) => {
+    const isLocalhost = req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1";
+    if (!isLocalhost) {
+      console.warn(`  [security] Blocked unauthenticated external request from ${req.ip} to ${req.originalUrl}`);
+      return res.status(403).send("Forbidden: Dashboard requires DASH_USER and DASH_PASS to be set in environment variables when accessed externally.");
+    }
+    next();
+  });
 }
 
 // ── Serve JSON state files from DATA_DIR (persistent volume on Railway) ───────
@@ -70,18 +92,6 @@ app.use(express.static(__dirname, {
 // Root → dashboard
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
-});
-
-// Health check for Railway / uptime monitors
-app.get("/health", (req, res) => {
-  const stateFile = path.join(__dirname, "multi-trade-log.json");
-  const exists    = fs.existsSync(stateFile);
-  res.json({
-    status:    "ok",
-    bot:       botRunning ? "running" : "idle",
-    log:       exists,
-    timestamp: new Date().toISOString(),
-  });
 });
 
 // Live status endpoint — last N lines of bot output
