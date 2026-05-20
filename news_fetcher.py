@@ -10,7 +10,7 @@ Standalone test:
   python news_fetcher.py NVDA 24
 """
 
-import os, sys, json, time, urllib.request, urllib.parse
+import os, sys, json, time, urllib.request
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 load_dotenv()
