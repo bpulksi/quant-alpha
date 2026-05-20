@@ -81,7 +81,7 @@ def get_stock_prices(symbols: list) -> dict:
             print(f"  [StockPrice] alpaca-py error, falling back to urllib: {e}")
 
     # ── urllib fallback (no API keys / SDK error) ─────────────────────────
-    import urllib.request, urllib.error
+    import urllib.request
     headers   = {
         "APCA-API-KEY-ID":     ALPACA_API_KEY,
         "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY,
