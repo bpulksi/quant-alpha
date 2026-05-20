@@ -318,16 +318,16 @@ def fetch_all_news(symbol: str, lookback_hours: int = 24) -> list:
 
     all_news = cp + cg + rd + rss
 
-    # Deduplicate by title prefix (first 40 chars)
+    # Deduplicate by title prefix (first 40 chars) and filter by age
     seen   = set()
-    unique = []
+    fresh  = []
     for item in all_news:
-        key = item["title"][:40].lower().strip()
-        if key and key not in seen:
-            seen.add(key)
-            unique.append(item)
+        if item.get("age_hours", 0) <= lookback_hours:
+            key = item["title"][:40].lower().strip()
+            if key and key not in seen:
+                seen.add(key)
+                fresh.append(item)
 
-    fresh = [n for n in unique if n["age_hours"] <= lookback_hours]
     fresh.sort(key=lambda x: (-x["recency_weight"], x["age_hours"]))
     return fresh
 
