@@ -9,6 +9,7 @@ Standalone test:
 """
 
 import json, re, urllib.request, urllib.parse, os
+from functools import lru_cache
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -25,7 +26,8 @@ def check_ollama_running() -> bool:
     except Exception:
         return False
 
-def score_with_ollama(ticker: str, headlines: list) -> dict:
+@lru_cache(maxsize=128)
+def _cached_score_with_ollama(ticker: str, headlines: tuple) -> dict:
     top = headlines[:10]
     hl_text = "\n".join(f"- {h}" for h in top)
     prompt = (
@@ -66,6 +68,10 @@ def score_with_ollama(ticker: str, headlines: list) -> dict:
     except Exception as e:
         print(f"  [Ollama] Error: {e}")
     return None
+
+def score_with_ollama(ticker: str, headlines: list) -> dict:
+    """Wrapper to make headlines hashable for the lru_cache."""
+    return _cached_score_with_ollama(ticker, tuple(headlines))
 
 # ─── VADER fallback ───────────────────────────────────────────────────────────
 
