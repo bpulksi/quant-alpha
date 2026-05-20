@@ -11,6 +11,7 @@ Usage:
 """
 
 import os, sys, json, argparse
+import concurrent.futures
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 load_dotenv()
@@ -150,16 +151,21 @@ def research_signal(symbol: str, quant: dict = None) -> dict:
 def research_scan() -> list:
     """Run research_signal for all SYMBOLS (no quant data — uses neutral defaults)."""
     results = []
-    for sym in SYMBOLS:
-        print(f"  Scanning {sym}...", end=" ", flush=True)
-        try:
-            r = research_signal(sym)
-            results.append(r)
-            ta_str = f"  ta={r['ta_score']:+.2f}" if r["ta_score"] is not None else ""
-            print(f"score={r['opportunity_score']:.3f}  news={r['news_score']:+.2f}"
-                  f"  arb={r['arbitrage_net_pct']:.3f}%{ta_str}")
-        except Exception as e:
-            print(f"ERROR: {e}")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_sym = {executor.submit(research_signal, sym): sym for sym in SYMBOLS}
+
+        for future in concurrent.futures.as_completed(future_to_sym):
+            sym = future_to_sym[future]
+            try:
+                r = future.result()
+                results.append(r)
+                ta_str = f"  ta={r['ta_score']:+.2f}" if r["ta_score"] is not None else ""
+                print(f"  Scanned {sym}: score={r['opportunity_score']:.3f}  news={r['news_score']:+.2f}"
+                      f"  arb={r['arbitrage_net_pct']:.3f}%{ta_str}")
+            except Exception as e:
+                print(f"  Scanning {sym}... ERROR: {e}")
+
     return rank_opportunities(results)
 
 # ─── Write research_state.json ────────────────────────────────────────────────
