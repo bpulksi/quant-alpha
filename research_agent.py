@@ -38,6 +38,45 @@ from arbitrage_scanner   import scan_asset, scan_arbitrage
 from opportunity_ranker  import compute_opportunity_score, rank_opportunities
 from macro_intelligence  import blend_macro_into_news, get_macro_score
 
+# ─── Helper Functions for Research Signal ─────────────────────────────────────
+
+def _get_news_sentiment(symbol: str, stock: bool) -> tuple:
+    news_items = fetch_all_news(symbol, lookback_hours=24)
+    headlines  = [n["title"] for n in news_items]
+    ticker_for_sentiment = symbol if stock else symbol.replace("USDT", "")
+    sentiment  = score_news(ticker_for_sentiment, headlines)
+    return news_items, sentiment
+
+def _get_arbitrage(symbol: str, stock: bool) -> dict:
+    if stock:
+        return {"spread_pct": 0.0, "net_spread": 0.0, "is_actionable": False,
+               "buy_exchange": "", "sell_exchange": "", "prices": {}}
+    else:
+        return scan_asset(symbol)
+
+def _get_trading_agents(symbol: str) -> dict:
+    if not ENABLE_TA:
+        return {"ta_score": None, "ta_decision": None, "ta_reasoning": None, "ta_source": "disabled"}
+    try:
+        from trading_agents_bridge import get_ta_signal
+        print(f"  [TA] Fetching TradingAgents signal for {symbol}...")
+        ta_result   = get_ta_signal(symbol)
+        return {
+            "ta_score": ta_result.get("ta_score", 0.0),
+            "ta_decision": ta_result.get("decision", "hold"),
+            "ta_reasoning": ta_result.get("reasoning", ""),
+            "ta_source": ta_result.get("source", "trading_agents")
+        }
+    except Exception as e:
+        print(f"  [TA] TradingAgents unavailable: {e}")
+        return {"ta_score": None, "ta_decision": None, "ta_reasoning": None, "ta_source": f"error: {e}"}
+
+def _get_macro_overlay(symbol: str, sentiment_score: float) -> tuple:
+    macro_result = get_macro_score(symbol)
+    blended_news = blend_macro_into_news(sentiment_score, symbol, weight=0.30)
+    return macro_result, blended_news
+
+
 # ─── Core signal function ─────────────────────────────────────────────────────
 
 def research_signal(symbol: str, quant: dict = None) -> dict:
@@ -56,43 +95,16 @@ def research_signal(symbol: str, quant: dict = None) -> dict:
     stock = is_stock(symbol)
 
     # 1. News + sentiment
-    news_items = fetch_all_news(symbol, lookback_hours=24)
-    headlines  = [n["title"] for n in news_items]
-    # For stocks use ticker as-is; for crypto strip USDT
-    ticker_for_sentiment = symbol if stock else symbol.replace("USDT", "")
-    sentiment  = score_news(ticker_for_sentiment, headlines)
+    news_items, sentiment = _get_news_sentiment(symbol, stock)
 
-    # 2. Arbitrage -- crypto only (stocks have no cross-exchange spread to exploit)
-    if stock:
-        arb = {"spread_pct": 0.0, "net_spread": 0.0, "is_actionable": False,
-               "buy_exchange": "", "sell_exchange": "", "prices": {}}
-    else:
-        arb = scan_asset(symbol)
+    # 2. Arbitrage
+    arb = _get_arbitrage(symbol, stock)
 
-    # 3. TradingAgents multi-agent analysis (opt-in — slow ~3 min/asset)
-    ta_score    = None
-    ta_decision = None
-    ta_reasoning = None
-    ta_source   = "disabled"
+    # 3. TradingAgents
+    ta_data = _get_trading_agents(symbol)
 
-    if ENABLE_TA:
-        try:
-            from trading_agents_bridge import get_ta_signal
-            print(f"  [TA] Fetching TradingAgents signal for {symbol}...")
-            ta_result   = get_ta_signal(symbol)
-            ta_score    = ta_result.get("ta_score", 0.0)
-            ta_decision = ta_result.get("decision", "hold")
-            ta_reasoning = ta_result.get("reasoning", "")
-            ta_source   = ta_result.get("source", "trading_agents")
-        except Exception as e:
-            print(f"  [TA] TradingAgents unavailable: {e}")
-            ta_source = f"error: {e}"
-
-    # 4. Macro intelligence overlay (expert signals, decay-weighted)
-    macro_result = get_macro_score(symbol)
-    macro_score  = macro_result["macro_score"]   # -1 to +1
-    # Blend macro into news score (30% macro weight -- soft overlay, not override)
-    blended_news = blend_macro_into_news(sentiment["score"], symbol, weight=0.30)
+    # 4. Macro intelligence overlay
+    macro_result, blended_news = _get_macro_overlay(symbol, sentiment["score"])
 
     # 5. Opportunity score (with or without TA)
     ranking = compute_opportunity_score(
@@ -101,7 +113,7 @@ def research_signal(symbol: str, quant: dict = None) -> dict:
         news_score     = blended_news,      # macro-adjusted news score
         arb_net_spread = arb.get("net_spread", 0.0),
         volume_ratio   = volume_ratio,
-        ta_score       = ta_score,
+        ta_score       = ta_data["ta_score"],
     )
 
     result = {
@@ -125,14 +137,14 @@ def research_signal(symbol: str, quant: dict = None) -> dict:
         "prices":               arb.get("prices", {}),
 
         # TradingAgents
-        "ta_score":             ta_score,
-        "ta_decision":          ta_decision,
-        "ta_reasoning":         ta_reasoning,
-        "ta_source":            ta_source,
+        "ta_score":             ta_data["ta_score"],
+        "ta_decision":          ta_data["ta_decision"],
+        "ta_reasoning":         ta_data["ta_reasoning"],
+        "ta_source":            ta_data["ta_source"],
         "trading_agents_enabled": ENABLE_TA,
 
         # Macro intelligence
-        "macro_score":          macro_score,
+        "macro_score":          macro_result["macro_score"],
         "macro_summary":        macro_result["summary"],
         "macro_signal_count":   macro_result["signal_count"],
         "news_score_raw":       round(sentiment["score"], 4),    # pre-macro
