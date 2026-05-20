@@ -13,6 +13,7 @@ import json
 import sys
 import os
 import pickle
+import concurrent.futures
 import hashlib
 import numpy as np
 import pandas as pd
@@ -685,6 +686,15 @@ def calc_position_size(price, atr, capital, risk_pct=0.01, direction="BUY"):
 
 # ─── Step 4: Backtesting WITH Transaction Costs ───────────────────────────
 
+def _safe_backtest(asset):
+    """Helper function for parallelizing backtesting."""
+    try:
+        r = backtest(asset)
+        return asset, r, None
+    except Exception as e:
+        return asset, None, str(e)
+
+
 def backtest(symbol="BTCUSDT", interval="15m", initial_capital=1000, trade_size=10,
              include_costs=True):
     """Production-grade backtest with transaction costs, slippage, and VaR."""
@@ -1050,12 +1060,14 @@ if __name__ == "__main__":
         print("  QUANT ENGINE V3 — Multi-Asset Backtest (with costs)")
         print("=" * 60)
         all_results = {}
-        for asset in assets:
-            try:
-                r = backtest(asset)
-                all_results[asset] = r
-            except Exception as e:
-                print(f"  ERROR backtesting {asset}: {e}")
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = {executor.submit(_safe_backtest, asset): asset for asset in assets}
+            for future in concurrent.futures.as_completed(futures):
+                asset, r, err = future.result()
+                if err:
+                    print(f"  ERROR backtesting {asset}: {err}")
+                else:
+                    all_results[asset] = r
 
         print("\n" + "=" * 70)
         print("  BACKTEST COMPARISON (with transaction costs)")
